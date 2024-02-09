@@ -1,5 +1,5 @@
 import Lean
-open Lean Elab Command Meta
+open Lean
 
 namespace IMP
 
@@ -76,7 +76,7 @@ partial def elabBexp : Syntax → IO bexp
     return bexp.BLt x y
   | _ => throw (IO.userError "not a bexp")
 
-partial def elabCom : Syntax -> IO com
+partial def elabCom : Syntax → IO com
   | `(com_syn| skip) => return com.CSkip
   | `(com_syn| $x:ident := $n:aexp_syn) => do
     let n ← elabAexp n

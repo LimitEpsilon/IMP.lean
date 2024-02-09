@@ -1,6 +1,6 @@
 import Test.Lean
 import Lean
-open Lean Elab PrettyPrinter
+open Lean
 
 unsafe def parse (env : Environment) (input : String) (fileName : String) : IO Unit := do
   let stx ← match Parser.runParserCategory env `com_syn input fileName with
@@ -15,7 +15,7 @@ def failWith (msg : String) (exitCode : UInt8 := 1) : IO α := do
   IO.Process.exit exitCode
 
 unsafe def main (args : List String) : IO Unit := do
-  let [fileName] := args | failWith "Usage: reformat file"
+  let [fileName] := args | failWith "Usage: parse IMP files"
   initSearchPath (← findSysroot)
   let input ← IO.FS.readFile fileName
   let env ← Lean.importModules #[`Test.Lean] {}
