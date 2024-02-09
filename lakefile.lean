@@ -9,4 +9,5 @@ lean_lib «Test».«Lean» where
 
 @[default_target]
 lean_exe «test-lean» where
+  supportInterpreter := true
   root := `Main
