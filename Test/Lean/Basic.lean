@@ -125,14 +125,62 @@ end
 
 elab ">>" p:com_syn "<<" : term => elabCom p
 
-#reduce >>
-a := 5;;
-if 3 < 4 then
-  c := 5
-else
-  a := a + 1
-fi;;
-b := 10
-<<
+mutual
+def printAexp (a : aexp) : IO Unit :=
+  match a with
+  | .ANum n => IO.print n
+  | .AVar x => IO.print x
+  | .AAdd a1 a2 => do
+    printAexp a1
+    IO.print " + "
+    printAexp a2
 
+def printBexp (b : bexp) : IO Unit :=
+  match b with
+  | .BConst b => IO.print b
+  | .BNot b => do
+    IO.print "¬ "
+    printBexp b
+  | .BAnd b1 b2 => do
+    printBexp b1
+    IO.print " ∧ "
+    printBexp b2
+  | .BLt a1 a2 => do
+    printAexp a1
+    IO.print " < "
+    printAexp a2
+
+def printCom (c : com) : IO Unit :=
+  match c with
+  | .CSkip => IO.print "skip"
+  | .CAsgn x a => do
+    IO.print x
+    IO.print " := "
+    printAexp a
+  | .CSeq c1 c2 => do
+    printCom c1
+    IO.print " ; "
+    printCom c2
+  | .CIf b cthen celse => do
+    IO.print "if "
+    printBexp b
+    IO.print " then "
+    printCom cthen
+    IO.print " else "
+    printCom celse
+  | .CWhile b c => do
+    IO.print "while "
+    printBexp b
+    IO.print " do "
+    printCom c
+end
+
+def x := >>
+    if 3 < 4 then
+      c := 5
+    else
+      a := a + 1
+    fi;;
+    b := 10
+<<
 end IMP
