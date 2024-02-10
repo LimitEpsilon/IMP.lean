@@ -1,6 +1,13 @@
-if 3 < 4 then
-  c := 5
+RES := 1;;
+I := 2;;   
+T := N + I;;
+if N < T + I
+then RES := 0
 else
-  a := a + 1
-fi;;
-b := 10
+  I := 3;;
+  while I + I < N && RES < 1 do
+    T := N + I;;
+    if N < T + I then RES := 0 else skip fi;;
+    I := I + 2
+  od      
+fi

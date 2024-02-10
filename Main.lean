@@ -1,4 +1,4 @@
-import Test.Lean
+import «Test».«Lean»
 import Lean
 open Lean
 
@@ -16,7 +16,10 @@ def failWith (msg : String) (exitCode : UInt8 := 1) : IO α := do
 
 unsafe def main (args : List String) : IO Unit := do
   let [fileName] := args | failWith "Usage: parse IMP files"
-  initSearchPath (← findSysroot)
+  -- the directory structure must be
+  -- execution-dir/lib/Test/Lean.olean
+  -- execution-dir/lib/Test/Lean/Basic.olean
+  initSearchPath (← findSysroot) ["lib"]
   let input ← IO.FS.readFile fileName
   let env ← Lean.importModules #[`Test.Lean] {}
   parse env input fileName
