@@ -6,7 +6,7 @@ unsafe def parse (env : Environment) (input : String) (fileName : String) : IO U
   let stx ← match Parser.runParserCategory env `com_syn input fileName with
     | Except.ok stx => pure stx
     | Except.error errmsg => throw (IO.userError errmsg)
-  let c ← IMP.elabCom stx
+  let c ← IMP.parseCom stx
   IMP.printCom c
   IO.println ""
 

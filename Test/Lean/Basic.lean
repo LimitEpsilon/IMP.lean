@@ -24,6 +24,53 @@ mutual
   | CWhile (b : bexp) (c : com) : com
 end
 
+-- define mkAexp, mkBexp, mkCom
+mutual
+def mkAexp : aexp →  MetaM Expr
+| .ANum n => Meta.mkAppM ``aexp.ANum #[mkNatLit n]
+| .AVar x => Meta.mkAppM ``aexp.AVar #[mkStrLit x]
+| .AAdd x y => do
+  let x ← mkAexp x
+  let y ← mkAexp y
+  Meta.mkAppM ``aexp.AAdd #[x, y]
+
+def mkBexp : bexp → MetaM Expr
+| .BConst b => match b with
+  | .true => Meta.mkAppM ``bexp.BConst #[.const ``Bool.true []]
+  | .false => Meta.mkAppM ``bexp.BConst #[.const ``Bool.false []]
+| .BNot b => do
+  let b ← mkBexp b
+  Meta.mkAppM ``bexp.BNot #[b]
+| .BAnd x y => do
+  let x ← mkBexp x
+  let y ← mkBexp y
+  Meta.mkAppM ``bexp.BAnd #[x, y]
+| .BLt x y => do
+  let x ← mkAexp x
+  let y ← mkAexp y
+  Meta.mkAppM ``bexp.BLt #[x, y]
+
+def mkCom : com → MetaM Expr
+| .CSkip => Meta.mkAppM ``com.CSkip #[]
+| .CAsgn x n => do
+  let x := mkStrLit x
+  let n ← mkAexp n
+  Meta.mkAppM ``com.CAsgn #[x, n]
+| .CSeq x y => do
+  let x ← mkCom x
+  let y ← mkCom y
+  Meta.mkAppM ``com.CSeq #[x, y]
+| .CIf b x y => do
+  let b ← mkBexp b
+  let x ← mkCom x
+  let y ← mkCom y
+  Meta.mkAppM ``com.CIf #[b, x, y]
+| .CWhile b x => do
+  let b ← mkBexp b
+  let x ← mkCom x
+  Meta.mkAppM ``com.CWhile #[b, x]
+end
+
 -- define syntactic categories
 declare_syntax_cat aexp_syn
 declare_syntax_cat bexp_syn
@@ -49,50 +96,50 @@ syntax "if " bexp_syn "then " com_syn "else " com_syn " fi" : com_syn
 syntax "while " bexp_syn "do " com_syn " od" : com_syn
 
 mutual
-partial def elabAexp : Syntax → IO aexp
+partial def parseAexp : Syntax → IO aexp
   -- `mkAppM` creates an `Expr.app`, given the function `Name` and the args
   -- `mkNatLit` creates an `Expr` from a `Nat`
   | `(aexp_syn| $n:num) => return aexp.ANum n.getNat
   | `(aexp_syn| $i:ident) => return aexp.AVar i.getId.toString
   | `(aexp_syn| $x:aexp_syn + $y:aexp_syn) => do
-    let x ← elabAexp x
-    let y ← elabAexp y
+    let x ← parseAexp x
+    let y ← parseAexp y
     return aexp.AAdd x y
   | _ => throw (IO.userError "not an aexp")
 
-partial def elabBexp : Syntax → IO bexp
+partial def parseBexp : Syntax → IO bexp
   | `(bexp_syn| true) => return bexp.BConst Bool.true
   | `(bexp_syn| false) => return bexp.BConst Bool.false
   | `(bexp_syn| ! $b:bexp_syn) => do
-    let b ← elabBexp b
+    let b ← parseBexp b
     return bexp.BNot b
   | `(bexp_syn| $x:bexp_syn && $y:bexp_syn) => do
-    let x ← elabBexp x
-    let y ← elabBexp y
+    let x ← parseBexp x
+    let y ← parseBexp y
     return bexp.BAnd x y
   | `(bexp_syn| $x:aexp_syn < $y:aexp_syn) => do
-    let x ← elabAexp x
-    let y ← elabAexp y
+    let x ← parseAexp x
+    let y ← parseAexp y
     return bexp.BLt x y
   | _ => throw (IO.userError "not a bexp")
 
-partial def elabCom : Syntax → IO com
+partial def parseCom : Syntax → IO com
   | `(com_syn| skip) => return com.CSkip
   | `(com_syn| $x:ident := $n:aexp_syn) => do
-    let n ← elabAexp n
+    let n ← parseAexp n
     return com.CAsgn x.getId.toString n
   | `(com_syn| $x:com_syn ;; $y:com_syn) => do
-    let x ← elabCom x
-    let y ← elabCom y
+    let x ← parseCom x
+    let y ← parseCom y
     return com.CSeq x y
   | `(com_syn| if $b:bexp_syn then $x:com_syn else $y:com_syn fi) => do
-    let b ← elabBexp b
-    let x ← elabCom x
-    let y ← elabCom y
+    let b ← parseBexp b
+    let x ← parseCom x
+    let y ← parseCom y
     return com.CIf b x y
   | `(com_syn| while $b:bexp_syn do $x:com_syn od) => do
-    let b ← elabBexp b
-    let x ← elabCom x
+    let b ← parseBexp b
+    let x ← parseCom x
     return com.CWhile b x
   | _ => throw (IO.userError "not a com")
 end
@@ -146,4 +193,11 @@ def printCom (c : com) : IO Unit :=
     IO.print " do "
     printCom c
 end
+
+-- for interactive debugging
+elab ">>" p:com_syn "<<" : term => do
+  let p ← parseCom p
+  mkCom p
+
+#reduce >> if true then x := 1 else skip fi <<
 end IMP
