@@ -201,3 +201,40 @@ elab ">>" p:com_syn "<<" : term => do
 
 #reduce >> if true then x := 1 else skip fi <<
 end IMP
+
+-- making whitespace sensitive parsers
+-- def newline := leading_parser "\n"
+inductive binaryT :=
+| Bnil
+| BZ (b : binaryT)
+| BO (b : binaryT)
+
+declare_syntax_cat binary
+syntax num : binary
+syntax num binary : binary
+syntax num binary : binary
+partial def parseBinary : Syntax → IO binaryT
+| `(binary| 0) => return .BZ .Bnil
+| `(binary| 1) => return .BO .Bnil
+| `(binary| 0 $b:binary) => do
+  let b ← parseBinary b
+  return .BZ b
+| `(binary| 1 $b:binary) => do
+  let b ← parseBinary b
+  return .BO b
+| _ => throw (IO.userError "not binary")
+
+def mkBinary : binaryT → MetaM Expr
+| .Bnil => return .const ``binaryT.Bnil []
+| .BZ b => do
+  let b ← mkBinary b
+  Meta.mkAppM ``binaryT.BZ #[b]
+| .BO b => do
+  let b ← mkBinary b
+  Meta.mkAppM ``binaryT.BO #[b]
+
+elab "showbinary(" b:binary ")" : term => do
+  let b ← parseBinary b
+  mkBinary b
+
+#reduce showbinary( 0 1 1 0 )
